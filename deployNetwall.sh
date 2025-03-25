@@ -4,7 +4,19 @@ if ! command -v whiptail &>/dev/null; then
     echo "Installing whiptail..."
     apt-get update && apt-get install -y whiptail
 fi
- 
+
+# ----------------------------
+# Cleanup function
+# ----------------------------
+TEMP_FILE=""
+OVA_EXTRACT_DIR="/tmp/ova_extract"
+
+cleanup() {
+    [[ -f "$TEMP_FILE" ]] && rm -f "$TEMP_FILE"
+    [[ -d "$OVA_EXTRACT_DIR" ]] && rm -rf "$OVA_EXTRACT_DIR"
+}
+trap cleanup EXIT
+
 # ----------------------------
 # Get User Input via Whiptail
 # ----------------------------
