@@ -32,6 +32,13 @@ if [ -z "$BRIDGES" ]; then
     exit 1
 fi
 
+# List available storage pools (without jq)
+STORAGES=$(pvesh get /storage --output-format=json | grep -o '"storage":"[^"]*"' | cut -d':' -f2 | tr -d '"')
+if [ -z "$STORAGES" ]; then
+    echo "❌ No storage pools found on the system."
+    exit 1
+fi
+
 # Function to select bridges for VM interfaces
 select_bridges() {
     local iface_count=$1
@@ -47,6 +54,20 @@ select_bridges() {
             "${OPTIONS[@]}" 3>&1 1>&2 2>&3) || exit 1
         arr+=("$(echo "$BRIDGES" | sed -n "${SEL}p")")
     done
+}
+
+# Function to select storage pool
+select_storage() {
+    OPTIONS=()
+    COUNT=1
+    for S in $STORAGES; do
+        OPTIONS+=("$COUNT" "$S")
+        ((COUNT++))
+    done
+    STORAGE_SEL=$(whiptail --title "Select Storage Pool for VM Disk" --menu "Choose a storage pool:" 15 50 5 \
+        "${OPTIONS[@]}" 3>&1 1>&2 2>&3) || exit 1
+    STORAGE=$(echo "$STORAGES" | sed -n "${STORAGE_SEL}p")
+    echo "Selected storage: $STORAGE"
 }
 
 if [[ "$DEPLOY_MODE" == "2" ]]; then
@@ -88,8 +109,10 @@ else
     select_bridges "$INTERFACE_COUNT" INTERFACES_BRIDGES
 fi
 
+# Select storage pool
+select_storage
+
 # Other VM settings
-STORAGE=$(whiptail --inputbox "Enter Storage Location:" 10 50 "local-lvm" 3>&1 1>&2 2>&3) || exit 1
 RAM_SIZE=$(whiptail --inputbox "Enter RAM Size (MB):" 10 50 "4096" 3>&1 1>&2 2>&3) || exit 1
 CPU_CORES=$(whiptail --inputbox "Enter Number of CPU Cores:" 10 50 "4" 3>&1 1>&2 2>&3) || exit 1
 
